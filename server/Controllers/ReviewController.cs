@@ -33,34 +33,42 @@ namespace server.Controllers
         [HttpPost]
         public async Task<ActionResult<Review>> CreateReview([FromBody] Review review)
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId))
+            try
             {
-                return Unauthorized("User not authenticated");
-            }
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized("User not authenticated");
+                }
 
-            // Verify campground exists
-            var campground = await _campgrounds.Find(c => c.Id == review.CampgroundId).FirstOrDefaultAsync();
-            if (campground == null)
+                // Verify campground exists
+                var campground = await _campgrounds.Find(c => c.Id == review.CampgroundId).FirstOrDefaultAsync();
+                if (campground == null)
+                {
+                    return NotFound("Campground not found");
+                }
+
+                // Set review properties
+                review.UserId = userId;
+                review.CreatedAt = DateTime.UtcNow;
+
+                // Let MongoDB generate the ID
+                await _reviews.InsertOneAsync(review);
+
+                // Update campground rating
+                var reviews = await _reviews.Find(r => r.CampgroundId == review.CampgroundId).ToListAsync();
+                var averageRating = reviews.Average(r => r.Rating);
+                await _campgrounds.UpdateOneAsync(
+                    c => c.Id == review.CampgroundId,
+                    Builders<Campground>.Update.Set(c => c.Rating, averageRating)
+                );
+
+                return CreatedAtAction(nameof(GetCampgroundReviews), new { campgroundId = review.CampgroundId }, review);
+            }
+            catch (Exception ex)
             {
-                return NotFound("Campground not found");
+                return BadRequest($"Error creating review: {ex.Message}");
             }
-
-            // Set review properties
-            review.UserId = userId;
-            review.CreatedAt = DateTime.UtcNow;
-
-            await _reviews.InsertOneAsync(review);
-
-            // Update campground rating
-            var reviews = await _reviews.Find(r => r.CampgroundId == review.CampgroundId).ToListAsync();
-            var averageRating = reviews.Average(r => r.Rating);
-            await _campgrounds.UpdateOneAsync(
-                c => c.Id == review.CampgroundId,
-                Builders<Campground>.Update.Set(c => c.Rating, averageRating)
-            );
-
-            return CreatedAtAction(nameof(GetCampgroundReviews), new { campgroundId = review.CampgroundId }, review);
         }
 
         [Authorize]

@@ -6,7 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 const CampDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [campground, setCampground] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,11 +20,19 @@ const CampDetails = () => {
   });
 
   useEffect(() => {
+    console.log('Auth state:', { user, authLoading });
+    if (!authLoading && !user) {
+      console.log('No user found, redirecting to login');
+      navigate('/signin');
+      return;
+    }
+  }, [user, authLoading, navigate]);
+
+  useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
-        
         // Fetch campground
         const campgroundResponse = await fetch(`http://localhost:5088/api/Campground/${id}`, {
           headers: {
@@ -72,24 +80,32 @@ const CampDetails = () => {
 
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
+    console.log('Current user state:', user);
+    
     if (!user) {
       showFeedback('Please sign in to leave a review', true);
       return;
     }
 
     try {
+      const reviewData = {
+        campgroundId: id,
+        userId: user.id,
+        userName: user.username,
+        rating: newReview.rating,
+        comment: newReview.comment,
+        createdAt: new Date().toISOString()
+      };
+      
+      console.log('Submitting review with data:', reviewData);
+
       const response = await fetch('http://localhost:5088/api/Review', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${user.token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          campgroundId: id,
-          rating: newReview.rating,
-          comment: newReview.comment,
-          userName: user.name
-        })
+        body: JSON.stringify(reviewData)
       });
 
       if (!response.ok) {
