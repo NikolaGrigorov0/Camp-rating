@@ -104,8 +104,11 @@ export default function SignUp() {
       return;
     }
 
+    console.log(formData.username,
+      formData.email,
+      formData.password);
+    setLoading(true);
     try {
-      setLoading(true);
       const success = await register(
         formData.username,
         formData.email,

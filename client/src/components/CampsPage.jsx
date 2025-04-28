@@ -13,24 +13,6 @@ const CampsPage = () => {
     const fetchCampgrounds = async () => {
       try {
         // Simulated data - replace with actual API call
-        const mockCampgrounds = [
-          {
-            id: 1,
-            name: 'Mountain View Campground',
-            location: 'Rocky Mountains, CO',
-            description: 'Beautiful mountain views with access to hiking trails',
-            price: 35,
-            image: 'https://images.unsplash.com/photo-1537905569824-f89f14cceb68',
-          },
-          {
-            id: 2,
-            name: 'Lakeside Retreat',
-            location: 'Lake Tahoe, CA',
-            description: 'Peaceful lakeside camping with water activities',
-            price: 45,
-            image: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4',
-          },
-        ];
         setCampgrounds(mockCampgrounds);
         setFilteredCampgrounds(mockCampgrounds);
       } catch (error) {

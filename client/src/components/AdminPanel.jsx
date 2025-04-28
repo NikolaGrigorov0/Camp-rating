@@ -1,47 +1,30 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { FaTimes, FaStar } from 'react-icons/fa';
+import { FaTimes, FaStar, FaCampground } from 'react-icons/fa';
 
 export default function AdminPanel() {
-  const [hotels, setHotels] = useState([]);
+  const [campgrounds, setCampgrounds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newHotel, setNewHotel] = useState({
-    basicinfo: {
-      name: '',
-      description: '',
-      stars: 3,
-      images: [],
-      amenities: ['WiFi', 'Parking', 'Restaurant']
-    },
-    location: {
-      street: '',
-      city: '',
-      country: '',
-      locationtype: 'Point',
-      coordinates: [0, 0]
-    },
-    contact: {
-      phone: '',
-      email: ''
-    },
-    rooms: [{
-      type: 'Standard',
-      description: 'Comfortable standard room',
-      pricepernight: 100.00,
-      capacity: 2,
-      images: [],
-      available: true
-    }]
+  const [newCampground, setNewCampground] = useState({
+    name: '',
+    description: '',
+    location: '',
+    price: 0,
+    rating: 0,
+    image: '',
+    coordinates: [0, 0],
+    amenities: ['Tent Sites', 'RV Hookups', 'Restrooms', 'Showers'],
+    capacity: 4
   });
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const fetchHotels = async () => {
+  const fetchCampgrounds = async () => {
     try {
-      const response = await fetch('http://localhost:5088/api/Hotel', {
+      const response = await fetch('http://localhost:5088/api/Campground', {
         headers: {
           'Authorization': `Bearer ${user.token}`,
           'Content-Type': 'application/json'
@@ -49,16 +32,16 @@ export default function AdminPanel() {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch hotels: ${response.statusText}`);
+        throw new Error(`Failed to fetch campgrounds: ${response.statusText}`);
       }
 
       const data = await response.json();
-      console.log('Fetched hotels:', data);
-      setHotels(data);
+      console.log('Fetched campgrounds:', data);
+      setCampgrounds(data);
       setError(null);
     } catch (error) {
-      console.error('Error fetching hotels:', error);
-      setError('Failed to load hotels. Please try again later.');
+      console.error('Error fetching campgrounds:', error);
+      setError('Failed to load campgrounds. Please try again later.');
     } finally {
       setLoading(false);
     }
@@ -76,115 +59,79 @@ export default function AdminPanel() {
         return;
       }
 
-      fetchHotels();
+      fetchCampgrounds();
     };
 
     checkAccess();
   }, [user, navigate]);
 
-  const handleCreateHotel = async (e) => {
+  const handleCreateCampground = async (e) => {
     e.preventDefault();
     try {
-      // Create a properly formatted hotel object
-      const hotelData = {
-        basicinfo: {
-          name: newHotel.basicinfo.name,
-          description: newHotel.basicinfo.description,
-          stars: newHotel.basicinfo.stars,
-          images: newHotel.basicinfo.images,
-          amenities: newHotel.basicinfo.amenities
-        },
-        location: {
-          street: newHotel.location.street,
-          city: newHotel.location.city,
-          country: newHotel.location.country,
-          locationtype: 'Point',
-          coordinates: newHotel.location.coordinates
-        },
-        contact: {
-          phone: newHotel.contact.phone,
-          email: newHotel.contact.email
-        },
-        rooms: [{
-          type: newHotel.rooms[0].type,
-          description: newHotel.rooms[0].description,
-          pricepernight: newHotel.rooms[0].pricepernight,
-          capacity: newHotel.rooms[0].capacity,
-          images: newHotel.rooms[0].images,
-          available: newHotel.rooms[0].available
-        }]
+      const campgroundData = {
+        name: newCampground.name,
+        description: newCampground.description,
+        location: newCampground.location,
+        price: newCampground.price,
+        rating: newCampground.rating,
+        image: newCampground.image,
+        coordinates: newCampground.coordinates,
+        amenities: newCampground.amenities,
+        capacity: newCampground.capacity
       };
 
-      console.log('Creating hotel with data:', JSON.stringify(hotelData, null, 2));
+      console.log('Creating campground with data:', JSON.stringify(campgroundData, null, 2));
 
-      const response = await fetch('http://localhost:5088/api/Hotel', {
+      const response = await fetch('http://localhost:5088/api/Campground', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${user.token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(hotelData)
+        body: JSON.stringify(campgroundData)
       });
 
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Server error response:', errorData);
         if (errorData.errors) {
-          // Create a more detailed error message from validation errors
           const errorMessages = Object.entries(errorData.errors)
             .map(([key, value]) => `${key}: ${value.join(', ')}`)
             .join('\n');
           throw new Error(`Validation errors:\n${errorMessages}`);
         }
-        throw new Error(errorData.message || 'Failed to create hotel');
+        throw new Error(errorData.message || 'Failed to create campground');
       }
 
       const result = await response.json();
-      console.log('Hotel created successfully:', result);
+      console.log('Campground created successfully:', result);
 
-      await fetchHotels();
+      await fetchCampgrounds();
       setShowCreateModal(false);
-      setNewHotel({
-        basicinfo: {
-          name: '',
-          description: '',
-          stars: 3,
-          images: [],
-          amenities: ['WiFi', 'Parking', 'Restaurant']
-        },
-        location: {
-          street: '',
-          city: '',
-          country: '',
-          locationtype: 'Point',
-          coordinates: [0, 0]
-        },
-        contact: {
-          phone: '',
-          email: ''
-        },
-        rooms: [{
-          type: 'Standard',
-          description: 'Comfortable standard room',
-          pricepernight: 100.00,
-          capacity: 2,
-          images: [],
-          available: true
-        }]
+      setNewCampground({
+        name: '',
+        description: '',
+        location: '',
+        price: 0,
+        rating: 0,
+        image: '',
+        coordinates: [0, 0],
+        amenities: ['Tent Sites', 'RV Hookups', 'Restrooms', 'Showers'],
+        capacity: 4
       });
     } catch (error) {
-      console.error('Error creating hotel:', error);
-      setError(error.message || 'Failed to create hotel. Please try again.');
+      console.error('Error creating campground:', error);
+      setError(error.message || 'Failed to create campground. Please try again.');
     }
   };
 
-  const handleDeleteHotel = async (hotelId) => {
-    if (!window.confirm('Are you sure you want to delete this hotel?')) {
+  const handleDeleteCampground = async (campgroundId) => {
+    if (!window.confirm('Are you sure you want to delete this campground?')) {
       return;
     }
 
     try {
-      const response = await fetch(`http://localhost:5088/api/Hotel/${hotelId}`, {
+      const response = await fetch(`http://localhost:5088/api/Campground/${campgroundId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${user.token}`,
@@ -193,27 +140,24 @@ export default function AdminPanel() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete hotel');
+        throw new Error('Failed to delete campground');
       }
 
-      await fetchHotels();
+      await fetchCampgrounds();
     } catch (error) {
-      console.error('Error deleting hotel:', error);
-      setError('Failed to delete hotel. Please try again.');
+      console.error('Error deleting campground:', error);
+      setError('Failed to delete campground. Please try again.');
     }
   };
 
-  const handleInputChange = (e, section, field) => {
+  const handleInputChange = (e, field) => {
     const value = e.target.type === 'number' 
       ? e.target.value === '' ? '' : parseFloat(e.target.value)
       : e.target.value;
     
-    setNewHotel(prev => ({
+    setNewCampground(prev => ({
       ...prev,
-      [section]: {
-        ...prev[section],
-        [field]: value
-      }
+      [field]: value
     }));
   };
 
@@ -221,7 +165,7 @@ export default function AdminPanel() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>
@@ -248,219 +192,164 @@ export default function AdminPanel() {
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-lg">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
             {error}
           </div>
         )}
 
-        <div className="space-y-6">
-          <div>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Hotel Management</h2>
-              <button 
-                onClick={() => setShowCreateModal(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Add New Hotel
-              </button>
-            </div>
-            
-            {hotels.length === 0 && !error ? (
-              <div className="text-center py-8 text-gray-500">
-                No hotels found in the database. Add your first hotel to get started.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full bg-white">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stars</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rooms</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {hotels.map((hotel) => (
-                      <tr key={hotel.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">{hotel.basicInfo.name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {hotel.location.city}, {hotel.location.country}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">{hotel.basicInfo.stars} ★</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{hotel.rooms?.length || 0}</td>
-                        <td className="px-6 py-4 whitespace-nowrap space-x-2">
-                          <button className="text-blue-600 hover:text-blue-800 font-medium">Edit</button>
-                          <button 
-                            onClick={() => handleDeleteHotel(hotel.id)}
-                            className="text-red-600 hover:text-red-800 font-medium"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-semibold text-gray-700">Campgrounds</h2>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+          >
+            Add New Campground
+          </button>
         </div>
-      </div>
 
-      {/* Improved Create Hotel Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-3xl w-full p-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6 pb-4 border-b">
-              <h3 className="text-2xl font-bold text-gray-800">Create New Hotel</h3>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="text-gray-500 hover:text-gray-700 transition-colors"
-              >
-                <FaTimes size={24} />
-              </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {campgrounds.map((campground) => (
+            <div key={campground.id} className="bg-white rounded-lg shadow-md overflow-hidden">
+              <img
+                src={campground.image}
+                alt={campground.name}
+                className="w-full h-48 object-cover"
+              />
+              <div className="p-4">
+                <h3 className="text-xl font-semibold text-gray-800">{campground.name}</h3>
+                <p className="text-gray-600 mt-1">{campground.location}</p>
+                <div className="flex items-center mt-2">
+                  <FaStar className="text-yellow-500 mr-1" />
+                  <span className="text-gray-700">{campground.rating}</span>
+                </div>
+                <p className="text-green-600 font-semibold mt-2">${campground.price}/night</p>
+                <div className="mt-4 flex justify-between">
+                  <button
+                    onClick={() => navigate(`/campgrounds/${campground.id}`)}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    View Details
+                  </button>
+                  <button
+                    onClick={() => handleDeleteCampground(campground.id)}
+                    className="text-red-600 hover:text-red-800"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
             </div>
+          ))}
+        </div>
 
-            <form onSubmit={handleCreateHotel} className="space-y-8">
-              {/* Basic Information Section */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="text-lg font-semibold mb-4 text-gray-800">Basic Information</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Hotel Name</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Enter hotel name"
-                      value={newHotel.basicinfo.name}
-                      onChange={(e) => handleInputChange(e, 'basicinfo', 'name')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <textarea
-                      required
-                      placeholder="Enter hotel description"
-                      value={newHotel.basicinfo.description}
-                      onChange={(e) => handleInputChange(e, 'basicinfo', 'description')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      rows="3"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Stars Rating</label>
-                    <div className="flex items-center space-x-1">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          type="button"
-                          onClick={() => setNewHotel(prev => ({
-                            ...prev,
-                            basicinfo: { ...prev.basicinfo, stars: star }
-                          }))}
-                          className={`text-2xl focus:outline-none ${
-                            star <= newHotel.basicinfo.stars ? 'text-yellow-400' : 'text-gray-300'
-                          }`}
-                        >
-                          <FaStar />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Location Section */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="text-lg font-semibold mb-4 text-gray-800">Location</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Street Address</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Enter street address"
-                      value={newHotel.location.street}
-                      onChange={(e) => handleInputChange(e, 'location', 'street')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Enter city"
-                      value={newHotel.location.city}
-                      onChange={(e) => handleInputChange(e, 'location', 'city')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Enter country"
-                      value={newHotel.location.country}
-                      onChange={(e) => handleInputChange(e, 'location', 'country')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Contact Information Section */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="text-lg font-semibold mb-4 text-gray-800">Contact Information</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                    <input
-                      type="tel"
-                      required
-                      placeholder="Enter phone number"
-                      value={newHotel.contact.phone}
-                      onChange={(e) => handleInputChange(e, 'contact', 'phone')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                    <input
-                      type="email"
-                      required
-                      placeholder="Enter email address"
-                      value={newHotel.contact.email}
-                      onChange={(e) => handleInputChange(e, 'contact', 'email')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-6 border-t">
+        {showCreateModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold">Add New Campground</h3>
                 <button
-                  type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition-colors"
+                  className="text-gray-500 hover:text-gray-700"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
-                >
-                  Create Hotel
+                  <FaTimes />
                 </button>
               </div>
-            </form>
+              <form onSubmit={handleCreateCampground}>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Name</label>
+                    <input
+                      type="text"
+                      value={newCampground.name}
+                      onChange={(e) => handleInputChange(e, 'name')}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Description</label>
+                    <textarea
+                      value={newCampground.description}
+                      onChange={(e) => handleInputChange(e, 'description')}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Location</label>
+                    <input
+                      type="text"
+                      value={newCampground.location}
+                      onChange={(e) => handleInputChange(e, 'location')}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Price per Night</label>
+                    <input
+                      type="number"
+                      value={newCampground.price}
+                      onChange={(e) => handleInputChange(e, 'price')}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Rating</label>
+                    <input
+                      type="number"
+                      value={newCampground.rating}
+                      onChange={(e) => handleInputChange(e, 'rating')}
+                      min="0"
+                      max="5"
+                      step="0.1"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Image URL</label>
+                    <input
+                      type="text"
+                      value={newCampground.image}
+                      onChange={(e) => handleInputChange(e, 'image')}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Capacity</label>
+                    <input
+                      type="number"
+                      value={newCampground.capacity}
+                      onChange={(e) => handleInputChange(e, 'capacity')}
+                      min="1"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateModal(false)}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  >
+                    Create Campground
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 } 
