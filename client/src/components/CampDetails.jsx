@@ -18,41 +18,37 @@ const CampDetails = () => {
     const fetchCampground = async () => {
       try {
         setLoading(true);
-        // TODO: Replace with actual API call
-        const mockCampground = {
-          id: id,
-          name: 'Mountain View Campground',
-          location: 'Rocky Mountains, CO',
-          description: 'Beautiful mountain views with access to hiking trails. Perfect for hiking, fishing, and stargazing. The campground offers both tent and RV sites with modern amenities.',
-          price: 35,
-          rating: 4.5,
-          images: [
-            'https://images.unsplash.com/photo-1537905569824-f89f14cceb68',
-            'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4',
-            'https://images.unsplash.com/photo-1517824806704-9040b037703b'
-          ],
-          amenities: [
-            'Fire pits',
-            'Picnic tables',
-            'Restrooms',
-            'Showers',
-            'Drinking water',
-            'RV hookups'
-          ],
-          rules: [
-            'Quiet hours: 10 PM - 6 AM',
-            'No pets allowed',
-            'Maximum 6 people per site',
-            'No open fires during fire bans'
-          ]
-        };
-        setCampground(mockCampground);
+        setError(null);
+        
+        const response = await fetch(`http://localhost:5088/api/Campground/${id}`, {
+          headers: {
+            'Authorization': user?.token ? `Bearer ${user.token}` : '',
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Server error response:', errorText);
+          throw new Error(`Failed to fetch campground details: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Fetched campground data:', data);
+        
+        if (!data) {
+          throw new Error('No campground data received');
+        }
+
+        setCampground(data);
+        
+        // Check if campground is in user's favorites
         if (user?.favorites) {
           setIsFavorite(user.favorites.includes(id));
         }
       } catch (err) {
         console.error('Error fetching campground:', err);
-        setError('Failed to load campground details');
+        setError(err.message || 'Failed to load campground details');
       } finally {
         setLoading(false);
       }
@@ -73,7 +69,18 @@ const CampDetails = () => {
     }
 
     try {
-      // TODO: Implement favorite toggle API call
+      const response = await fetch(`http://localhost:5088/api/User/favorites/${id}`, {
+        method: isFavorite ? 'DELETE' : 'POST',
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update favorites');
+      }
+
       setIsFavorite(!isFavorite);
       showFeedback(
         isFavorite ? 'Removed from favorites' : 'Added to favorites',
@@ -130,37 +137,10 @@ const CampDetails = () => {
       <div className="relative h-[600px] bg-black">
         <div className="absolute inset-0 flex items-center justify-center">
           <img
-            src={campground.images[currentImageIndex]}
-            alt={`${campground.name} - Image ${currentImageIndex + 1}`}
+            src={campground.image || 'https://via.placeholder.com/1200x600?text=No+Image'}
+            alt={campground.name}
             className="w-full h-full object-cover"
           />
-        </div>
-
-        {campground.images.length > 1 && (
-          <>
-            <button
-              onClick={prevImage}
-              className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-50 p-3 rounded-full 
-                hover:bg-opacity-75 hover:scale-110 hover:shadow-lg 
-                transition-all duration-300 ease-in-out
-                group"
-            >
-              <FaChevronLeft className="text-2xl text-black group-hover:text-blue-600 transition-colors duration-300" />
-            </button>
-            <button
-              onClick={nextImage}
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-50 p-3 rounded-full 
-                hover:bg-opacity-75 hover:scale-110 hover:shadow-lg 
-                transition-all duration-300 ease-in-out
-                group"
-            >
-              <FaChevronRight className="text-2xl text-black group-hover:text-blue-600 transition-colors duration-300" />
-            </button>
-          </>
-        )}
-
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 px-4 py-2 rounded-full text-white">
-          {currentImageIndex + 1} / {campground.images.length}
         </div>
 
         <div className="absolute top-0 left-0 right-0 p-8 bg-gradient-to-b from-black to-transparent">
@@ -194,7 +174,7 @@ const CampDetails = () => {
               <div className="mt-6">
                 <h3 className="text-xl font-semibold mb-3">Amenities</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  {campground.amenities.map((amenity, index) => (
+                  {campground.amenities && campground.amenities.map((amenity, index) => (
                     <div key={index} className="flex items-center">
                       <span className="text-green-500 mr-2">✓</span>
                       <span>{amenity}</span>
@@ -202,43 +182,26 @@ const CampDetails = () => {
                   ))}
                 </div>
               </div>
-
-              <div className="mt-6">
-                <h3 className="text-xl font-semibold mb-3">Rules & Regulations</h3>
-                <ul className="list-disc list-inside space-y-2">
-                  {campground.rules.map((rule, index) => (
-                    <li key={index} className="text-gray-700">{rule}</li>
-                  ))}
-                </ul>
-              </div>
             </div>
           </div>
 
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-2xl font-bold">${campground.price}</span>
-                <span className="text-gray-600">per night</span>
+                <span className="text-2xl font-bold">${campground.price}/night</span>
+                <div className="flex items-center">
+                  <FaStar className="text-yellow-400 mr-1" />
+                  <span>{campground.rating}</span>
+                </div>
               </div>
-              
-              <div className="flex items-center mb-4">
-                <FaStar className="text-yellow-400 mr-1" />
-                <span className="text-gray-700">{campground.rating} / 5</span>
+              <div className="mb-4">
+                <p className="text-gray-600">Capacity: {campground.capacity} people</p>
               </div>
-
               <button
                 className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition-colors"
-                onClick={() => {
-                  if (!user) {
-                    showFeedback('Please sign in to make a reservation', true);
-                    navigate('/signin');
-                    return;
-                  }
-                  // TODO: Implement reservation functionality
-                  showFeedback('Reservation feature coming soon!', false);
-                }}
+                onClick={() => navigate('/booking')}
               >
-                Make Reservation
+                Book Now
               </button>
             </div>
           </div>

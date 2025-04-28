@@ -1,6 +1,7 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace server.Models
 {
@@ -8,6 +9,7 @@ namespace server.Models
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
+        [JsonIgnore]
         public string Id { get; set; }
 
         [Required]
@@ -47,10 +49,12 @@ namespace server.Models
         [BsonElement("capacity")]
         public int Capacity { get; set; }
 
+        [JsonIgnore]
         [BsonElement("createdAt")]
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; }
 
+        [JsonIgnore]
         [BsonElement("updatedAt")]
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; }
     }
 } 

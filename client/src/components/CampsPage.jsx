@@ -1,29 +1,55 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import SearchBarWithMap from './SearchBarWithMap';
+import { useAuth } from '../auth/AuthContext';
 
 const CampsPage = () => {
   const [campgrounds, setCampgrounds] = useState([]);
   const [filteredCampgrounds, setFilteredCampgrounds] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const { user } = useAuth();
 
   useEffect(() => {
-    // TODO: Replace with actual API call
     const fetchCampgrounds = async () => {
       try {
-        // Simulated data - replace with actual API call
-        setCampgrounds(mockCampgrounds);
-        setFilteredCampgrounds(mockCampgrounds);
+        setLoading(true);
+        setError(null);
+        
+        const response = await fetch('http://localhost:5088/api/Campground', {
+          headers: {
+            'Authorization': user?.token ? `Bearer ${user.token}` : '',
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error('Please sign in to view campgrounds');
+          }
+          throw new Error('Failed to fetch campgrounds');
+        }
+
+        const data = await response.json();
+        console.log('Fetched campgrounds:', data); // Debug log
+        
+        if (!Array.isArray(data)) {
+          throw new Error('Invalid data format received from server');
+        }
+
+        setCampgrounds(data);
+        setFilteredCampgrounds(data);
       } catch (error) {
         console.error('Error fetching campgrounds:', error);
+        setError(error.message || 'Failed to load campgrounds. Please try again later.');
       } finally {
         setLoading(false);
       }
     };
 
     fetchCampgrounds();
-  }, []);
+  }, [user]);
 
   const handleSearch = (searchValue) => {
     setSearchTerm(searchValue);
@@ -39,6 +65,16 @@ const CampsPage = () => {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-red-50 text-red-600 p-4 rounded-lg text-center">
+          {error}
+        </div>
       </div>
     );
   }
@@ -61,7 +97,7 @@ const CampsPage = () => {
             <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
               <div className="relative h-48">
                 <img
-                  src={camp.image}
+                  src={camp.image || 'https://via.placeholder.com/400x300?text=No+Image'}
                   alt={camp.name}
                   className="w-full h-full object-cover"
                 />
@@ -72,9 +108,10 @@ const CampsPage = () => {
                 <p className="text-gray-700 mb-4 line-clamp-2">{camp.description}</p>
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-bold">${camp.price}/night</span>
-                  <button className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors">
-                    View Details
-                  </button>
+                  <div className="flex items-center">
+                    <span className="text-yellow-400 mr-1">★</span>
+                    <span>{camp.rating}</span>
+                  </div>
                 </div>
               </div>
             </div>
