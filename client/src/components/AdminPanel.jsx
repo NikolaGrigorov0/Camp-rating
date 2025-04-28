@@ -24,6 +24,10 @@ export default function AdminPanel() {
 
   const fetchCampgrounds = async () => {
     try {
+      if (!user?.token) {
+        throw new Error('No authentication token found');
+      }
+
       const response = await fetch('http://localhost:5088/api/Campground', {
         headers: {
           'Authorization': `Bearer ${user.token}`,
@@ -31,8 +35,16 @@ export default function AdminPanel() {
         }
       });
 
+      if (response.status === 401) {
+        // Token might be expired or invalid
+        localStorage.removeItem('token');
+        navigate('/signin');
+        return;
+      }
+
       if (!response.ok) {
-        throw new Error(`Failed to fetch campgrounds: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`Failed to fetch campgrounds: ${errorText}`);
       }
 
       const data = await response.json();
@@ -41,7 +53,7 @@ export default function AdminPanel() {
       setError(null);
     } catch (error) {
       console.error('Error fetching campgrounds:', error);
-      setError('Failed to load campgrounds. Please try again later.');
+      setError(error.message || 'Failed to load campgrounds. Please try again later.');
     } finally {
       setLoading(false);
     }
@@ -68,6 +80,10 @@ export default function AdminPanel() {
   const handleCreateCampground = async (e) => {
     e.preventDefault();
     try {
+      if (!user?.token) {
+        throw new Error('No authentication token found');
+      }
+
       const campgroundData = {
         name: newCampground.name,
         description: newCampground.description,
@@ -91,16 +107,17 @@ export default function AdminPanel() {
         body: JSON.stringify(campgroundData)
       });
 
+      if (response.status === 401) {
+        // Token might be expired or invalid
+        localStorage.removeItem('token');
+        navigate('/signin');
+        return;
+      }
+
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Server error response:', errorData);
-        if (errorData.errors) {
-          const errorMessages = Object.entries(errorData.errors)
-            .map(([key, value]) => `${key}: ${value.join(', ')}`)
-            .join('\n');
-          throw new Error(`Validation errors:\n${errorMessages}`);
-        }
-        throw new Error(errorData.message || 'Failed to create campground');
+        const errorText = await response.text();
+        console.error('Server error response:', errorText);
+        throw new Error(errorText || 'Failed to create campground');
       }
 
       const result = await response.json();

@@ -4,6 +4,7 @@ using System.Text;
 using MongoDB.Driver;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
+using server.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,7 +18,7 @@ builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Hotel Reservation API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Campground Reservation API", Version = "v1" });
 
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
@@ -64,6 +65,13 @@ builder.Services.AddScoped<IMongoDatabase>(serviceProvider =>
         throw new InvalidOperationException("MongoDB database name is not configured.");
     }
     return client.GetDatabase(databaseName);
+});
+
+// Add campgrounds database configuration
+builder.Services.AddScoped<IMongoDatabase>(serviceProvider =>
+{
+    var client = serviceProvider.GetRequiredService<IMongoClient>();
+    return client.GetDatabase("campgrounds_db");
 });
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -127,8 +135,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Hotel Reservation API v1");
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Campground Reservation API v1");
     });
+
+    // Seed the database with sample data
+    var client = app.Services.GetRequiredService<IMongoClient>();
+    await SeedCampgrounds.SeedDatabase(client);
 }
 
 app.UseHttpsRedirection();
