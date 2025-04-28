@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaStar, FaMapMarkerAlt, FaHeart, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaStar, FaMapMarkerAlt, FaHeart, FaChevronLeft, FaChevronRight, FaTrash } from 'react-icons/fa';
 import { useAuth } from '../auth/AuthContext';
 
 const CampDetails = () => {
@@ -8,54 +8,129 @@ const CampDetails = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [campground, setCampground] = useState(null);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState(null);
+  const [newReview, setNewReview] = useState({
+    rating: 5,
+    comment: ''
+  });
 
   useEffect(() => {
-    const fetchCampground = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        const response = await fetch(`http://localhost:5088/api/Campground/${id}`, {
+        // Fetch campground
+        const campgroundResponse = await fetch(`http://localhost:5088/api/Campground/${id}`, {
           headers: {
             'Authorization': user?.token ? `Bearer ${user.token}` : '',
             'Content-Type': 'application/json'
           }
         });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Server error response:', errorText);
-          throw new Error(`Failed to fetch campground details: ${response.status}`);
+        if (!campgroundResponse.ok) {
+          throw new Error(`Failed to fetch campground: ${campgroundResponse.status}`);
         }
 
-        const data = await response.json();
-        console.log('Fetched campground data:', data);
-        
-        if (!data) {
-          throw new Error('No campground data received');
+        const campgroundData = await campgroundResponse.json();
+        setCampground(campgroundData);
+
+        // Fetch reviews
+        const reviewsResponse = await fetch(`http://localhost:5088/api/Review/campground/${id}`, {
+          headers: {
+            'Authorization': user?.token ? `Bearer ${user.token}` : '',
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!reviewsResponse.ok) {
+          throw new Error(`Failed to fetch reviews: ${reviewsResponse.status}`);
         }
 
-        setCampground(data);
+        const reviewsData = await reviewsResponse.json();
+        setReviews(reviewsData);
         
         // Check if campground is in user's favorites
         if (user?.favorites) {
           setIsFavorite(user.favorites.includes(id));
         }
       } catch (err) {
-        console.error('Error fetching campground:', err);
-        setError(err.message || 'Failed to load campground details');
+        console.error('Error fetching data:', err);
+        setError(err.message);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchCampground();
+    fetchData();
   }, [id, user]);
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    if (!user) {
+      showFeedback('Please sign in to leave a review', true);
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:5088/api/Review', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          campgroundId: id,
+          rating: newReview.rating,
+          comment: newReview.comment,
+          userName: user.name
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit review');
+      }
+
+      const review = await response.json();
+      setReviews([review, ...reviews]);
+      setNewReview({ rating: 5, comment: '' });
+      showFeedback('Review submitted successfully', false);
+    } catch (err) {
+      console.error('Error submitting review:', err);
+      showFeedback('Failed to submit review. Please try again.', true);
+    }
+  };
+
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm('Are you sure you want to delete this review?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:5088/api/Review/${reviewId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete review');
+      }
+
+      setReviews(reviews.filter(review => review.id !== reviewId));
+      showFeedback('Review deleted successfully', false);
+    } catch (err) {
+      console.error('Error deleting review:', err);
+      showFeedback('Failed to delete review. Please try again.', true);
+    }
+  };
 
   const showFeedback = (message, isError = false) => {
     setFeedbackMessage({ text: message, isError });
@@ -181,6 +256,91 @@ const CampDetails = () => {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+
+            {/* Reviews Section */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-2xl font-bold mb-4">Reviews</h2>
+              
+              {/* Review Form */}
+              {user && (
+                <form onSubmit={handleReviewSubmit} className="mb-6">
+                  <div className="mb-4">
+                    <label className="block text-gray-700 mb-2">Rating</label>
+                    <div className="flex">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setNewReview({ ...newReview, rating: star })}
+                          className="text-2xl mr-2"
+                        >
+                          <FaStar
+                            className={star <= newReview.rating ? 'text-yellow-400' : 'text-gray-300'}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-gray-700 mb-2">Comment</label>
+                    <textarea
+                      value={newReview.comment}
+                      onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
+                      className="w-full p-2 border rounded"
+                      rows="3"
+                      required
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                  >
+                    Submit Review
+                  </button>
+                </form>
+              )}
+
+              {/* Reviews List */}
+              <div className="space-y-4">
+                {reviews.length === 0 ? (
+                  <p className="text-gray-600">No reviews yet. Be the first to review!</p>
+                ) : (
+                  reviews.map((review) => (
+                    <div key={review.id} className="border-b pb-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="flex items-center mb-2">
+                            <div className="flex">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <FaStar
+                                  key={star}
+                                  className={`text-sm ${
+                                    star <= review.rating ? 'text-yellow-400' : 'text-gray-300'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <span className="ml-2 text-gray-600">by {review.userName}</span>
+                          </div>
+                          <p className="text-gray-700">{review.comment}</p>
+                        </div>
+                        {user && user.id === review.userId && (
+                          <button
+                            onClick={() => handleDeleteReview(review.id)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <FaTrash />
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500 mt-2">
+                        {new Date(review.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
