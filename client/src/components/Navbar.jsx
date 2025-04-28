@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { FaHeart, FaHotel, FaHome, FaUserCircle, FaBars, FaTimes } from 'react-icons/fa';
+import { FaHeart, FaCampground, FaHome, FaUserCircle, FaBars, FaTimes } from 'react-icons/fa';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -42,17 +42,17 @@ const Navbar = () => {
             to="/" 
             className="flex items-center space-x-2 text-2xl font-bold hover:text-blue-200 transition-colors"
           >
-            <FaHotel className="text-3xl" />
-            <span>HotelFinder</span>
+            <FaCampground className="text-3xl" />
+            <span>CampFinder</span>
           </Link>
 
           <div className="hidden md:flex items-center space-x-4">
             <NavLink to="/" icon={FaHome}>Home</NavLink>
-            <NavLink to="/hotels" icon={FaHotel}>Hotels</NavLink>
+            <NavLink to="/camps" icon={FaCampground}>Camps</NavLink>
             {user && (
               <NavLink to="/favorites" icon={FaHeart}>Favorites</NavLink>
             )}
-            {user?.isAdmin && <NavLink to="/admin" icon={FaHotel}>Admin Panel</NavLink>}
+            {user?.isAdmin && <NavLink to="/admin" icon={FaCampground}>Admin Panel</NavLink>}
           </div>
 
           <div className="hidden md:flex items-center space-x-4">
@@ -98,11 +98,11 @@ const Navbar = () => {
         {isMenuOpen && (
           <div className="md:hidden py-4 space-y-2 border-t border-blue-700">
             <NavLink to="/" icon={FaHome}>Home</NavLink>
-            <NavLink to="/hotels" icon={FaHotel}>Hotels</NavLink>
+            <NavLink to="/camps" icon={FaCampground}>Camps</NavLink>
             {user && (
               <NavLink to="/favorites" icon={FaHeart}>Favorites</NavLink>
             )}
-            {user?.isAdmin && <NavLink to="/admin" icon={FaHotel}>Admin Panel</NavLink>}
+            {user?.isAdmin && <NavLink to="/admin" icon={FaCampground}>Admin Panel</NavLink>}
             {user ? (
               <>
                 <button
