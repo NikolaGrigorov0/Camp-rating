@@ -31,7 +31,7 @@ namespace server.Controllers
 
         [Authorize]
         [HttpPost]
-        public async Task<ActionResult<Review>> CreateReview([FromBody] Review review)
+        public async Task<ActionResult<Review>> CreateReview([FromBody] CreateReviewDto reviewDto)
         {
             try
             {
@@ -42,15 +42,22 @@ namespace server.Controllers
                 }
 
                 // Verify campground exists
-                var campground = await _campgrounds.Find(c => c.Id == review.CampgroundId).FirstOrDefaultAsync();
+                var campground = await _campgrounds.Find(c => c.Id == reviewDto.CampgroundId).FirstOrDefaultAsync();
                 if (campground == null)
                 {
                     return NotFound("Campground not found");
                 }
 
-                // Set review properties
-                review.UserId = userId;
-                review.CreatedAt = DateTime.UtcNow;
+                // Create new review
+                var review = new Review
+                {
+                    CampgroundId = reviewDto.CampgroundId,
+                    UserId = userId,
+                    UserName = reviewDto.UserName,
+                    Rating = reviewDto.Rating,
+                    Comment = reviewDto.Comment,
+                    CreatedAt = DateTime.UtcNow
+                };
 
                 // Let MongoDB generate the ID
                 await _reviews.InsertOneAsync(review);

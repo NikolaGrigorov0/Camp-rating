@@ -34,4 +34,20 @@ namespace server.Models
         [BsonElement("createdAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
+
+    public class CreateReviewDto
+    {
+        [Required]
+        public string CampgroundId { get; set; }
+
+        [Required]
+        public string UserName { get; set; }
+
+        [Required]
+        [Range(1, 5)]
+        public int Rating { get; set; }
+
+        [Required]
+        public string Comment { get; set; }
+    }
 } 
