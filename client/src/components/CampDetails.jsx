@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FaStar, FaMapMarkerAlt, FaHeart, FaChevronLeft, FaChevronRight, FaTrash } from 'react-icons/fa';
 import { useAuth } from '../auth/AuthContext';
+import { jwtDecode } from 'jwt-decode';
 
 const CampDetails = () => {
   const { id } = useParams();
@@ -88,9 +89,14 @@ const CampDetails = () => {
     }
 
     try {
+      const decodedToken = jwtDecode(user.token);
+      console.log('Decoded token:', decodedToken);
+      const userId = decodedToken['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
+      console.log('User ID from token:', userId);
+
       const reviewData = {
         campgroundId: id,
-        userId: user.id,
+        userId: userId,
         userName: user.username,
         rating: newReview.rating,
         comment: newReview.comment,
