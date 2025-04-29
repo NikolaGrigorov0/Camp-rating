@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { FaTimes, FaStar, FaCampground } from 'react-icons/fa';
+import { jwtDecode } from 'jwt-decode';
 
 export default function AdminPanel() {
   const [campgrounds, setCampgrounds] = useState([]);
@@ -22,12 +23,25 @@ export default function AdminPanel() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  const isAdmin = () => {
+    if (!user?.token) return false;
+    try {
+      const decodedToken = jwtDecode(user.token);
+      console.log('Decoded token:', decodedToken);
+      return decodedToken['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] === 'Admin';
+    } catch (error) {
+      console.error('Error decoding token:', error);
+      return false;
+    }
+  };
+
   const fetchCampgrounds = async () => {
     try {
       if (!user?.token) {
         throw new Error('No authentication token found');
       }
 
+      console.log('Fetching campgrounds with token:', user.token);
       const response = await fetch('http://localhost:5088/api/Campground', {
         headers: {
           'Authorization': `Bearer ${user.token}`,
@@ -36,7 +50,7 @@ export default function AdminPanel() {
       });
 
       if (response.status === 401) {
-        // Token might be expired or invalid
+        console.log('Unauthorized response:', await response.text());
         localStorage.removeItem('token');
         navigate('/signin');
         return;
@@ -48,7 +62,6 @@ export default function AdminPanel() {
       }
 
       const data = await response.json();
-      console.log('Fetched campgrounds:', data);
       setCampgrounds(data);
       setError(null);
     } catch (error) {
@@ -66,7 +79,7 @@ export default function AdminPanel() {
         return;
       }
 
-      if (!user.isAdmin) {
+      if (!isAdmin()) {
         navigate('/');
         return;
       }
@@ -84,6 +97,7 @@ export default function AdminPanel() {
         throw new Error('No authentication token found');
       }
 
+      console.log('Creating campground with token:', user.token);
       const campgroundData = {
         name: newCampground.name,
         description: newCampground.description,
@@ -96,8 +110,6 @@ export default function AdminPanel() {
         capacity: newCampground.capacity
       };
 
-      console.log('Creating campground with data:', JSON.stringify(campgroundData, null, 2));
-
       const response = await fetch('http://localhost:5088/api/Campground', {
         method: 'POST',
         headers: {
@@ -108,7 +120,7 @@ export default function AdminPanel() {
       });
 
       if (response.status === 401) {
-        // Token might be expired or invalid
+        console.log('Unauthorized response:', await response.text());
         localStorage.removeItem('token');
         navigate('/signin');
         return;
@@ -116,13 +128,10 @@ export default function AdminPanel() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Server error response:', errorText);
         throw new Error(errorText || 'Failed to create campground');
       }
 
       const result = await response.json();
-      console.log('Campground created successfully:', result);
-
       await fetchCampgrounds();
       setShowCreateModal(false);
       setNewCampground({
@@ -189,7 +198,7 @@ export default function AdminPanel() {
     );
   }
 
-  if (!user || !user.isAdmin) {
+  if (!user || !isAdmin()) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center text-red-600">

@@ -41,22 +41,35 @@ namespace server.Controllers
 
         [Authorize]
         [HttpPost]
-        public async Task<ActionResult<Campground>> CreateCampground([FromBody] Campground campground)
+        public async Task<ActionResult<Campground>> CreateCampground([FromBody] CreateCampgroundDto campgroundDto)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+
             if (string.IsNullOrEmpty(userId))
             {
                 return Unauthorized("User not authenticated");
             }
 
-            var user = await _users.Find(u => u.Id == userId).FirstOrDefaultAsync();
-            if (user == null || !user.IsAdmin)
+            if (userRole != "Admin")
             {
                 return Unauthorized("Only admins can create campgrounds");
             }
 
-            campground.CreatedAt = DateTime.UtcNow;
-            campground.UpdatedAt = DateTime.UtcNow;
+            var campground = new Campground
+            {
+                Name = campgroundDto.Name,
+                Description = campgroundDto.Description,
+                Location = campgroundDto.Location,
+                Price = campgroundDto.Price,
+                Rating = campgroundDto.Rating,
+                Image = campgroundDto.Image,
+                Coordinates = campgroundDto.Coordinates,
+                Amenities = campgroundDto.Amenities,
+                Capacity = campgroundDto.Capacity,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
             await _campgrounds.InsertOneAsync(campground);
             return CreatedAtAction(nameof(GetCampground), new { id = campground.Id }, campground);
@@ -67,13 +80,14 @@ namespace server.Controllers
         public async Task<IActionResult> UpdateCampground(string id, [FromBody] Campground updatedCampground)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+
             if (string.IsNullOrEmpty(userId))
             {
                 return Unauthorized("User not authenticated");
             }
 
-            var user = await _users.Find(u => u.Id == userId).FirstOrDefaultAsync();
-            if (user == null || !user.IsAdmin)
+            if (userRole != "Admin")
             {
                 return Unauthorized("Only admins can update campgrounds");
             }
@@ -97,13 +111,14 @@ namespace server.Controllers
         public async Task<IActionResult> DeleteCampground(string id)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+
             if (string.IsNullOrEmpty(userId))
             {
                 return Unauthorized("User not authenticated");
             }
 
-            var user = await _users.Find(u => u.Id == userId).FirstOrDefaultAsync();
-            if (user == null || !user.IsAdmin)
+            if (userRole != "Admin")
             {
                 return Unauthorized("Only admins can delete campgrounds");
             }

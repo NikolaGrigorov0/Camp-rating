@@ -19,6 +19,8 @@ const CampDetails = () => {
     rating: 5,
     comment: ''
   });
+  const [editingReview, setEditingReview] = useState(null);
+  const [editReviewData, setEditReviewData] = useState({ rating: '', comment: '' });
 
   useEffect(() => {
     console.log('Auth state:', { user, authLoading });
@@ -128,6 +130,51 @@ const CampDetails = () => {
     }
   };
 
+  const handleEditReview = (review) => {
+    setEditingReview(review);
+    setEditReviewData({
+      rating: review.rating,
+      comment: review.comment
+    });
+  };
+
+  const handleUpdateReview = async (e) => {
+    e.preventDefault();
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:5088/api/Review/${editingReview.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: JSON.stringify(editReviewData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update review');
+      }
+
+      const updatedReviews = reviews.map(review => 
+        review.id === editingReview.id 
+          ? { ...review, ...editReviewData }
+          : review
+      );
+      setReviews(updatedReviews);
+      setEditingReview(null);
+      setEditReviewData({ rating: '', comment: '' });
+      showFeedback('Review updated successfully', false);
+    } catch (error) {
+      console.error('Error updating review:', error);
+      showFeedback('Failed to update review. Please try again.', true);
+    }
+  };
+
   const handleDeleteReview = async (reviewId) => {
     if (!window.confirm('Are you sure you want to delete this review?')) {
       return;
@@ -137,8 +184,7 @@ const CampDetails = () => {
       const response = await fetch(`http://localhost:5088/api/Review/${reviewId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${user.token}`,
-          'Content-Type': 'application/json'
+          'Authorization': `Bearer ${user.token}`
         }
       });
 
@@ -148,8 +194,8 @@ const CampDetails = () => {
 
       setReviews(reviews.filter(review => review.id !== reviewId));
       showFeedback('Review deleted successfully', false);
-    } catch (err) {
-      console.error('Error deleting review:', err);
+    } catch (error) {
+      console.error('Error deleting review:', error);
       showFeedback('Failed to delete review. Please try again.', true);
     }
   };
@@ -282,88 +328,94 @@ const CampDetails = () => {
             </div>
 
             {/* Reviews Section */}
-            <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="mt-8">
               <h2 className="text-2xl font-bold mb-4">Reviews</h2>
-              
-              {/* Review Form */}
-              {user && (
-                <form onSubmit={handleReviewSubmit} className="mb-6">
-                  <div className="mb-4">
-                    <label className="block text-gray-700 mb-2">Rating</label>
-                    <div className="flex">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          type="button"
-                          onClick={() => setNewReview({ ...newReview, rating: star })}
-                          className="text-2xl mr-2"
+              {reviews.map(review => (
+                <div key={review.id} className="border-b py-4">
+                  {editingReview?.id === review.id ? (
+                    <form onSubmit={handleUpdateReview} className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Rating</label>
+                        <select
+                          value={editReviewData.rating}
+                          onChange={(e) => setEditReviewData({ ...editReviewData, rating: e.target.value })}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                          required
                         >
-                          <FaStar
-                            className={star <= newReview.rating ? 'text-yellow-400' : 'text-gray-300'}
-                          />
+                          <option value="">Select rating</option>
+                          {[1, 2, 3, 4, 5].map(num => (
+                            <option key={num} value={num}>{num} stars</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Comment</label>
+                        <textarea
+                          value={editReviewData.comment}
+                          onChange={(e) => setEditReviewData({ ...editReviewData, comment: e.target.value })}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                          rows="3"
+                          required
+                        />
+                      </div>
+                      <div className="flex space-x-2">
+                        <button
+                          type="submit"
+                          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                        >
+                          Save
                         </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="mb-4">
-                    <label className="block text-gray-700 mb-2">Comment</label>
-                    <textarea
-                      value={newReview.comment}
-                      onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
-                      className="w-full p-2 border rounded"
-                      rows="3"
-                      required
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                  >
-                    Submit Review
-                  </button>
-                </form>
-              )}
-
-              {/* Reviews List */}
-              <div className="space-y-4">
-                {reviews.length === 0 ? (
-                  <p className="text-gray-600">No reviews yet. Be the first to review!</p>
-                ) : (
-                  reviews.map((review) => (
-                    <div key={review.id} className="border-b pb-4">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingReview(null);
+                            setEditReviewData({ rating: '', comment: '' });
+                          }}
+                          className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div>
                       <div className="flex justify-between items-start">
                         <div>
-                          <div className="flex items-center mb-2">
-                            <div className="flex">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <FaStar
-                                  key={star}
-                                  className={`text-sm ${
-                                    star <= review.rating ? 'text-yellow-400' : 'text-gray-300'
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                            <span className="ml-2 text-gray-600">by {review.userName}</span>
+                          <p className="font-semibold">{review.userName}</p>
+                          <div className="flex items-center">
+                            {[...Array(5)].map((_, i) => (
+                              <FaStar
+                                key={i}
+                                className={`h-4 w-4 ${i < review.rating ? 'text-yellow-400' : 'text-gray-300'}`}
+                              />
+                            ))}
                           </div>
-                          <p className="text-gray-700">{review.comment}</p>
+                          <p className="mt-2">{review.comment}</p>
                         </div>
-                        {user && user.id === review.userId && (
-                          <button
-                            onClick={() => handleDeleteReview(review.id)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <FaTrash />
-                          </button>
+                        {user && review.userId === user.id && (
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleEditReview(review)}
+                              className="text-blue-500 hover:text-blue-700"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteReview(review.id)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         )}
                       </div>
                       <p className="text-sm text-gray-500 mt-2">
                         {new Date(review.createdAt).toLocaleDateString()}
                       </p>
                     </div>
-                  ))
-                )}
-              </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 

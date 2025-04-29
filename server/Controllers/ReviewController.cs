@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using server.Models;
 using System.Security.Claims;
+using System.ComponentModel.DataAnnotations;
 
 namespace server.Controllers
 {
@@ -111,5 +112,53 @@ namespace server.Controllers
 
             return NoContent();
         }
+
+        [Authorize]
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateReview(string id, [FromBody] UpdateReviewDto reviewDto)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized("User not authenticated");
+            }
+
+            var review = await _reviews.Find(r => r.Id == id).FirstOrDefaultAsync();
+            if (review == null)
+            {
+                return NotFound();
+            }
+
+            if (review.UserId != userId)
+            {
+                return Unauthorized("You can only edit your own reviews");
+            }
+
+            var update = Builders<Review>.Update
+                .Set(r => r.Rating, reviewDto.Rating)
+                .Set(r => r.Comment, reviewDto.Comment);
+
+            await _reviews.UpdateOneAsync(r => r.Id == id, update);
+
+            // Update campground rating
+            var reviews = await _reviews.Find(r => r.CampgroundId == review.CampgroundId).ToListAsync();
+            var averageRating = reviews.Average(r => r.Rating);
+            await _campgrounds.UpdateOneAsync(
+                c => c.Id == review.CampgroundId,
+                Builders<Campground>.Update.Set(c => c.Rating, averageRating)
+            );
+
+            return NoContent();
+        }
+    }
+
+    public class UpdateReviewDto
+    {
+        [Required]
+        [Range(1, 5)]
+        public int Rating { get; set; }
+
+        [Required]
+        public string Comment { get; set; }
     }
 } 

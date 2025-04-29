@@ -56,4 +56,35 @@ namespace server.Models
         [BsonElement("updatedAt")]
         public DateTime UpdatedAt { get; set; }
     }
+
+    public class CreateCampgroundDto
+    {
+        [Required]
+        public string Name { get; set; }
+
+        [Required]
+        public string Description { get; set; }
+
+        [Required]
+        public string Location { get; set; }
+
+        [Required]
+        public decimal Price { get; set; }
+
+        [Required]
+        [Range(0, 5)]
+        public double Rating { get; set; }
+
+        [Required]
+        public string Image { get; set; }
+
+        [Required]
+        public double[] Coordinates { get; set; }
+
+        [Required]
+        public string[] Amenities { get; set; }
+
+        [Required]
+        public int Capacity { get; set; }
+    }
 } 
