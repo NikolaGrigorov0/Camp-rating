@@ -21,6 +21,7 @@ const CampDetails = () => {
   });
   const [editingReview, setEditingReview] = useState(null);
   const [editReviewData, setEditReviewData] = useState({ rating: '', comment: '' });
+  const [currentUserId, setCurrentUserId] = useState(null);
 
   useEffect(() => {
     console.log('Auth state:', { user, authLoading });
@@ -30,6 +31,19 @@ const CampDetails = () => {
       return;
     }
   }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    if (user?.token) {
+      try {
+        const decodedToken = jwtDecode(user.token);
+        const userId = decodedToken['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
+        setCurrentUserId(userId);
+        console.log('Decoded user ID:', userId);
+      } catch (error) {
+        console.error('Error decoding token:', error);
+      }
+    }
+  }, [user]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -429,7 +443,7 @@ const CampDetails = () => {
                           </div>
                           <p className="mt-2">{review.comment}</p>
                         </div>
-                        {user && review.userId === user.id && (
+                        {currentUserId && currentUserId === review.userId && (
                           <div className="flex space-x-2">
                             <button
                               onClick={() => handleEditReview(review)}

@@ -3,13 +3,13 @@ import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { FaSearch, FaCalendarAlt, FaUser, FaStar, FaCampground } from 'react-icons/fa';
+import { FaSearch, FaStar } from 'react-icons/fa';
 import { useAuth } from '../auth/AuthContext';
 
 const SearchBarWithMap = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
+  const [destination, setDestination] = useState(searchParams.get('destination') || '');
   const [campgrounds, setCampgrounds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -19,14 +19,12 @@ const SearchBarWithMap = () => {
   const defaultCoordinates = [39.8283, -98.5795];
   const defaultZoom = 4;
 
-  const fetchCampgrounds = useCallback(async (searchQuery = '') => {
+  const fetchCampgrounds = useCallback(async () => {
     try {
       setLoading(true);
-      const url = searchQuery 
-        ? `http://localhost:5088/api/Campground/search?name=${encodeURIComponent(searchQuery)}`
-        : 'http://localhost:5088/api/Campground';
+      setError(null);
       
-      const response = await fetch(url, {
+      const response = await fetch('http://localhost:5088/api/Campground', {
         headers: {
           'Authorization': user?.token ? `Bearer ${user.token}` : '',
           'Content-Type': 'application/json'
@@ -66,25 +64,30 @@ const SearchBarWithMap = () => {
   }, [user?.token]);
 
   useEffect(() => {
-    const debounceTimer = setTimeout(() => {
-      fetchCampgrounds(searchTerm);
-    }, 300);
+    fetchCampgrounds();
+  }, [fetchCampgrounds]);
 
-    return () => clearTimeout(debounceTimer);
-  }, [searchTerm, fetchCampgrounds]);
-
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    if (destination) params.set('destination', destination);
+    navigate(`/search?${params.toString()}`);
   };
+
+  const filteredCampgrounds = campgrounds.filter(campground => {
+    return !destination || 
+      campground.name.toLowerCase().includes(destination.toLowerCase()) ||
+      campground.location.toLowerCase().includes(destination.toLowerCase());
+  });
 
   if (loading && !campgrounds.length) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   if (error) return <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>;
 
   // Get valid coordinates for the map center
-  const mapCenter = campgrounds.length > 0 && 
-                   Array.isArray(campgrounds[0].coordinates) && 
-                   campgrounds[0].coordinates.length === 2
-    ? campgrounds[0].coordinates
+  const mapCenter = filteredCampgrounds.length > 0 && 
+                   Array.isArray(filteredCampgrounds[0].coordinates) && 
+                   filteredCampgrounds[0].coordinates.length === 2
+    ? filteredCampgrounds[0].coordinates
     : defaultCoordinates;
 
   return (
@@ -92,19 +95,21 @@ const SearchBarWithMap = () => {
       <div className="bg-white shadow-md p-6 sticky top-0 z-50">
         <div className="container mx-auto">
           <div className="max-w-2xl mx-auto">
-            <div className="relative">
-              <label className="block text-sm font-medium text-green-800 mb-1">Search Campgrounds</label>
+            <form onSubmit={handleSearch}>
               <div className="relative">
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  placeholder="Search by campground name..."
-                  className="w-full p-3 pl-10 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-green-50"
-                />
-                <FaSearch className="absolute left-3 top-3.5 text-green-400" />
+                <label className="block text-sm font-medium text-green-800 mb-1">Search Campgrounds</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={destination}
+                    onChange={(e) => setDestination(e.target.value)}
+                    placeholder="Search by campground name or location..."
+                    className="w-full p-3 pl-10 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-green-50"
+                  />
+                  <FaSearch className="absolute left-3 top-3.5 text-green-400" />
+                </div>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       </div>
@@ -112,7 +117,7 @@ const SearchBarWithMap = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row gap-8">
           <div className="md:w-2/3 space-y-6">
-            {campgrounds.map((campground) => (
+            {filteredCampgrounds.map((campground) => (
               <Link 
                 to={`/campgrounds/${campground.id}`}
                 key={campground.id} 
@@ -142,7 +147,7 @@ const SearchBarWithMap = () => {
                 </div>
               </Link>
             ))}
-            {!loading && campgrounds.length === 0 && (
+            {!loading && filteredCampgrounds.length === 0 && (
               <div className="text-center py-8">
                 <p className="text-gray-500">No campgrounds found matching your search.</p>
               </div>
@@ -159,31 +164,22 @@ const SearchBarWithMap = () => {
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               />
-              {campgrounds.map(campground => (
+              {filteredCampgrounds.map(campground => (
                 <Marker 
                   key={campground.id} 
                   position={campground.coordinates}
                   icon={L.divIcon({
-                    className: 'cursor-pointer',
-                    html: `<div class="bg-white bg-opacity-90 text-black py-2 rounded-lg text-sm font-semibold shadow-md cursor-pointer">
+                    className: 'custom-div-icon',
+                    html: `<div class="bg-white bg-opacity-90 text-black py-2 px-3 rounded-lg text-sm font-semibold shadow-md">
                       $${campground.price}
                     </div>`,
-                    iconSize: [60, 30],
-                    iconAnchor: [30, 15],
+                    iconSize: [80, 30],
+                    iconAnchor: [40, 15],
                   })}
-                  eventHandlers={{
-                    click: () => navigate(`/campgrounds/${campground.id}`),
-                    mouseover: (e) => {
-                      e.target.openPopup();
-                    },
-                    mouseout: (e) => {
-                      e.target.closePopup();
-                    },
-                  }}
                 >
                   <Popup>
-                    <div className="flex w-[320px] p-2">
-                      <div className="flex-1 pr-3">
+                    <div className="w-[300px] p-2">
+                      <div className="flex flex-col">
                         <h3 className="text-lg font-semibold mb-1">{campground.name}</h3>
                         <p className="text-gray-600">{campground.location}</p>
                         <p className="text-gray-800 mt-1 font-medium">Price: ${campground.price}/night</p>
@@ -202,7 +198,11 @@ const SearchBarWithMap = () => {
                           View Details
                         </button>
                       </div>
-                      <img src={campground.image} alt={campground.name} className="w-[150px] h-[110px] object-cover rounded-md"/>
+                      <img 
+                        src={campground.image} 
+                        alt={campground.name} 
+                        className="w-full h-[120px] object-cover rounded-md mt-2"
+                      />
                     </div>
                   </Popup>
                 </Marker>

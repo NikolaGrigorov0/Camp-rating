@@ -93,13 +93,13 @@ export default function FavoritesPage() {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">No Favorite Hotels Yet</h2>
-          <p className="mb-4">Start exploring hotels and add them to your favorites!</p>
+          <h2 className="text-2xl font-bold mb-4">No Favorite Campgrounds Yet</h2>
+          <p className="mb-4">Start exploring campgrounds and add them to your favorites!</p>
           <Link
-            to="/hotels"
+            to="/campgrounds"
             className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition duration-300"
           >
-            Browse Hotels
+            Browse Campgrounds
           </Link>
         </div>
       </div>
@@ -108,7 +108,7 @@ export default function FavoritesPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Your Favorite Hotels</h1>
+      <h1 className="text-3xl font-bold mb-8">Your Favorite campgrounds</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {favoriteHotels.map(hotel => (
           <Link
