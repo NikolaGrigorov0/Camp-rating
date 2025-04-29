@@ -327,6 +327,43 @@ const CampDetails = () => {
               </div>
             </div>
 
+            {/* Add Review Form */}
+            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+              <h2 className="text-2xl font-bold mb-4">Write a Review</h2>
+              <form onSubmit={handleReviewSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Rating</label>
+                  <select
+                    value={newReview.rating}
+                    onChange={(e) => setNewReview({ ...newReview, rating: parseInt(e.target.value) })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    required
+                  >
+                    {[1, 2, 3, 4, 5].map(num => (
+                      <option key={num} value={num}>{num} stars</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Comment</label>
+                  <textarea
+                    value={newReview.comment}
+                    onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    rows="3"
+                    placeholder="Share your experience..."
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                >
+                  Submit Review
+                </button>
+              </form>
+            </div>
+
             {/* Reviews Section */}
             <div className="mt-8">
               <h2 className="text-2xl font-bold mb-4">Reviews</h2>
@@ -431,12 +468,6 @@ const CampDetails = () => {
               <div className="mb-4">
                 <p className="text-gray-600">Capacity: {campground.capacity} people</p>
               </div>
-              <button
-                className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition-colors"
-                onClick={() => navigate('/booking')}
-              >
-                Book Now
-              </button>
             </div>
           </div>
         </div>
