@@ -1,142 +1,108 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { FaSearch, FaCalendarAlt, FaUser, FaStar, FaCampground } from 'react-icons/fa';
+import { useAuth } from '../auth/AuthContext';
 
 const SearchBarWithMap = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [checkIn, setCheckIn] = useState(searchParams.get('checkIn') || '');
-  const [checkOut, setCheckOut] = useState(searchParams.get('checkOut') || '');
-  const [guests, setGuests] = useState(parseInt(searchParams.get('guests')) || 1);
-  const [destination, setDestination] = useState(searchParams.get('destination') || '');
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [campgrounds, setCampgrounds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { user } = useAuth();
+
+  // Default coordinates (center of the US)
+  const defaultCoordinates = [39.8283, -98.5795];
+  const defaultZoom = 4;
+
+  const fetchCampgrounds = useCallback(async (searchQuery = '') => {
+    try {
+      setLoading(true);
+      const url = searchQuery 
+        ? `http://localhost:5088/api/Campground/search?name=${encodeURIComponent(searchQuery)}`
+        : 'http://localhost:5088/api/Campground';
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': user?.token ? `Bearer ${user.token}` : '',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Unauthorized access');
+        }
+        throw new Error('Failed to fetch campgrounds');
+      }
+
+      const data = await response.json();
+      if (!Array.isArray(data)) {
+        throw new Error('Invalid data format received');
+      }
+
+      // Validate and clean campground data
+      const validatedCampgrounds = data.map(campground => ({
+        ...campground,
+        coordinates: Array.isArray(campground.coordinates) && 
+                    campground.coordinates.length === 2 &&
+                    typeof campground.coordinates[0] === 'number' &&
+                    typeof campground.coordinates[1] === 'number'
+          ? campground.coordinates
+          : defaultCoordinates
+      }));
+
+      setCampgrounds(validatedCampgrounds);
+    } catch (err) {
+      setError(err.message);
+      console.error('Error fetching campgrounds:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.token]);
 
   useEffect(() => {
-    const fetchCampgrounds = async () => {
-      try {
-        setLoading(true);
-        // TODO: Replace with actual API call
-        const mockCampgrounds = [
-          {
-            id: '1',
-            name: 'Mountain View Campground',
-            location: 'Rocky Mountains, CO',
-            description: 'Beautiful mountain views with access to hiking trails',
-            price: 35,
-            rating: 4.5,
-            image: 'https://images.unsplash.com/photo-1537905569824-f89f14cceb68',
-            coordinates: [39.7392, -104.9903],
-            amenities: ['Fire pits', 'Picnic tables', 'Restrooms', 'Showers'],
-            capacity: 6
-          },
-          {
-            id: '2',
-            name: 'Lakeside Retreat',
-            location: 'Lake Tahoe, CA',
-            description: 'Peaceful lakeside camping with water activities',
-            price: 45,
-            rating: 4.8,
-            image: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4',
-            coordinates: [39.0968, -120.0324],
-            amenities: ['RV hookups', 'Boat launch', 'Fishing pier', 'Store'],
-            capacity: 8
-          }
-        ];
-        setCampgrounds(mockCampgrounds);
-      } catch (err) {
-        setError('Failed to fetch campgrounds');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
+    const debounceTimer = setTimeout(() => {
+      fetchCampgrounds(searchTerm);
+    }, 300);
 
-    fetchCampgrounds();
-  }, []);
+    return () => clearTimeout(debounceTimer);
+  }, [searchTerm, fetchCampgrounds]);
 
-  const filteredCampgrounds = campgrounds.filter(campground => {
-    const searchTerm = destination.toLowerCase();
-    const matchesSearch = 
-      campground.name.toLowerCase().includes(searchTerm) ||
-      campground.location.toLowerCase().includes(searchTerm);
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
 
-    const hasDates = checkIn && checkOut;
-    if (hasDates) {
-      const checkInDate = new Date(checkIn);
-      const checkOutDate = new Date(checkOut);
-      
-      if (checkInDate >= checkOutDate) {
-        return false;
-      }
-    }
-
-    return matchesSearch && campground.capacity >= guests;
-  });
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (loading && !campgrounds.length) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   if (error) return <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>;
+
+  // Get valid coordinates for the map center
+  const mapCenter = campgrounds.length > 0 && 
+                   Array.isArray(campgrounds[0].coordinates) && 
+                   campgrounds[0].coordinates.length === 2
+    ? campgrounds[0].coordinates
+    : defaultCoordinates;
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white shadow-md p-6 sticky top-0 z-50">
         <div className="container mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="max-w-2xl mx-auto">
             <div className="relative">
-              <label className="block text-sm font-medium text-green-800 mb-1">Destination</label>
+              <label className="block text-sm font-medium text-green-800 mb-1">Search Campgrounds</label>
               <div className="relative">
                 <input
                   type="text"
-                  value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
-                  placeholder="Where do you want to camp?"
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  placeholder="Search by campground name..."
                   className="w-full p-3 pl-10 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-green-50"
                 />
                 <FaSearch className="absolute left-3 top-3.5 text-green-400" />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-green-800 mb-1">Check-in</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={checkIn}
-                  onChange={(e) => setCheckIn(e.target.value)}
-                  className="w-full p-3 pl-10 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-green-50"
-                />
-                <FaCalendarAlt className="absolute left-3 top-3.5 text-green-400" />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-green-800 mb-1">Check-out</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={checkOut}
-                  onChange={(e) => setCheckOut(e.target.value)}
-                  className="w-full p-3 pl-10 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-green-50"
-                />
-                <FaCalendarAlt className="absolute left-3 top-3.5 text-green-400" />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-green-800 mb-1">Guests</label>
-              <div className="relative">
-                <input
-                  type="number"
-                  min="1"
-                  value={guests}
-                  onChange={(e) => setGuests(parseInt(e.target.value))}
-                  className="w-full p-3 pl-10 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-green-50"
-                />
-                <FaUser className="absolute left-3 top-3.5 text-green-400" />
               </div>
             </div>
           </div>
@@ -146,7 +112,7 @@ const SearchBarWithMap = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row gap-8">
           <div className="md:w-2/3 space-y-6">
-            {filteredCampgrounds.map((campground) => (
+            {campgrounds.map((campground) => (
               <Link 
                 to={`/campgrounds/${campground.id}`}
                 key={campground.id} 
@@ -176,22 +142,27 @@ const SearchBarWithMap = () => {
                 </div>
               </Link>
             ))}
+            {!loading && campgrounds.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No campgrounds found matching your search.</p>
+              </div>
+            )}
           </div>
 
           <div className="md:w-1/3 h-[500px] sticky top-24">
             <MapContainer 
-              center={filteredCampgrounds.length ? filteredCampgrounds[0].coordinates : [0, 0]} 
-              zoom={filteredCampgrounds.length ? 10 : 2} 
+              center={mapCenter}
+              zoom={defaultZoom}
               className="h-full w-full"
             >
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               />
-              {filteredCampgrounds.map(campground => (
+              {campgrounds.map(campground => (
                 <Marker 
                   key={campground.id} 
-                  position={campground.coordinates} 
+                  position={campground.coordinates}
                   icon={L.divIcon({
                     className: 'cursor-pointer',
                     html: `<div class="bg-white bg-opacity-90 text-black py-2 rounded-lg text-sm font-semibold shadow-md cursor-pointer">
